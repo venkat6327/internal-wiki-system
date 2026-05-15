@@ -2,15 +2,14 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
-
-const CATEGORIES = ['General', 'Engineering', 'Design', 'Product', 'HR', 'Legal', 'Finance', 'Marketing', 'Operations', 'Other'];
+import { CATEGORY_OPTIONS, CATEGORY_LABELS, ARTICLE_CATEGORIES } from '../constants/articleConstants';
 
 const ArticleEditPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user, isEditor } = useAuth();
 
-  const [form, setForm] = useState({ title: '', body: '', category: 'General' });
+  const [form, setForm] = useState({ title: '', body: '', category: ARTICLE_CATEGORIES.GENERAL });
   const [article, setArticle] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -136,8 +135,8 @@ const ArticleEditPage = () => {
                 onChange={(e) => setForm({ ...form, category: e.target.value })}
                 style={{ cursor: 'pointer' }}
               >
-                {CATEGORIES.map((c) => (
-                  <option key={c} value={c}>{c}</option>
+                {CATEGORY_OPTIONS.map((c) => (
+                  <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>
                 ))}
               </select>
             </div>

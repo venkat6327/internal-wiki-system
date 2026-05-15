@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import StatusBadge from './StatusBadge';
+import { CATEGORY_LABELS } from '../constants/articleConstants';
 
 const ArticleCard = ({ article }) => {
   const { id, title, body, category, status, author, createdAt, updatedAt, _count } = article;
@@ -64,7 +65,7 @@ const ArticleCard = ({ article }) => {
               fontSize: '0.75rem',
               fontWeight: 600,
             }}>
-              {category}
+              {CATEGORY_LABELS[category] || category}
             </span>
             {_count?.versions > 0 && (
               <span style={{ fontSize: '0.75rem', color: '#64748b' }}>

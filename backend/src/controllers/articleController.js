@@ -1,4 +1,9 @@
 const prisma = require('../lib/prisma');
+const { ARTICLE_STATUS, ARTICLE_CATEGORIES } = require('../constants/articleConstants');
+
+// Valid enum value sets for validation
+const VALID_CATEGORIES = Object.values(ARTICLE_CATEGORIES);
+const VALID_STATUSES = Object.values(ARTICLE_STATUS);
 
 // Helper: create a snapshot version
 const createVersion = async (article, editorId) => {
@@ -95,12 +100,17 @@ const createArticle = async (req, res) => {
       return res.status(400).json({ message: 'Title and body are required.' });
     }
 
+    // Validate category enum
+    const resolvedCategory = category && VALID_CATEGORIES.includes(category)
+      ? category
+      : ARTICLE_CATEGORIES.GENERAL;
+
     const article = await prisma.article.create({
       data: {
         title,
         body,
-        category: category || 'General',
-        status: 'DRAFT',
+        category: resolvedCategory,
+        status: ARTICLE_STATUS.DRAFT,
         authorId: req.user.id,
       },
       include: {
@@ -151,8 +161,13 @@ const updateArticle = async (req, res) => {
       return res.status(403).json({ message: 'Not authorized to update this article.' });
     }
 
+    // Validate category enum if provided
+    if (category && !VALID_CATEGORIES.includes(category)) {
+      return res.status(400).json({ message: `Invalid category. Allowed: ${VALID_CATEGORIES.join(', ')}` });
+    }
+
     // If article is published, create a version snapshot before saving
-    if (article.status === 'PUBLISHED') {
+    if (article.status === ARTICLE_STATUS.PUBLISHED) {
       await createVersion(article, req.user.id);
     }
 
@@ -161,7 +176,7 @@ const updateArticle = async (req, res) => {
       data: {
         title: title ?? article.title,
         body: body ?? article.body,
-        category: category ?? article.category,
+        category: (category && VALID_CATEGORIES.includes(category)) ? category : article.category,
       },
       include: {
         author: { select: { id: true, name: true, email: true, role: true } },
@@ -187,7 +202,7 @@ const publishArticle = async (req, res) => {
       return res.status(403).json({ message: 'Not authorized to publish this article.' });
     }
 
-    if (article.status === 'ARCHIVED') {
+    if (article.status === ARTICLE_STATUS.ARCHIVED) {
       return res.status(400).json({ message: 'Cannot publish an archived article. Restore it first.' });
     }
 
@@ -196,7 +211,10 @@ const publishArticle = async (req, res) => {
 
     const updated = await prisma.article.update({
       where: { id: parseInt(id) },
-      data: { status: 'PUBLISHED' },
+      data: {
+        status: ARTICLE_STATUS.PUBLISHED,
+        publishedAt: article.publishedAt || new Date(),
+      },
       include: {
         author: { select: { id: true, name: true, email: true, role: true } },
       },
@@ -217,13 +235,13 @@ const archiveArticle = async (req, res) => {
     const article = await prisma.article.findUnique({ where: { id: parseInt(id) } });
     if (!article) return res.status(404).json({ message: 'Article not found.' });
 
-    if (article.status === 'ARCHIVED') {
+    if (article.status === ARTICLE_STATUS.ARCHIVED) {
       return res.status(400).json({ message: 'Article is already archived.' });
     }
 
     const updated = await prisma.article.update({
       where: { id: parseInt(id) },
-      data: { status: 'ARCHIVED' },
+      data: { status: ARTICLE_STATUS.ARCHIVED },
       include: {
         author: { select: { id: true, name: true, email: true, role: true } },
       },
@@ -244,13 +262,13 @@ const restoreArticle = async (req, res) => {
     const article = await prisma.article.findUnique({ where: { id: parseInt(id) } });
     if (!article) return res.status(404).json({ message: 'Article not found.' });
 
-    if (article.status !== 'ARCHIVED') {
+    if (article.status !== ARTICLE_STATUS.ARCHIVED) {
       return res.status(400).json({ message: 'Article is not archived.' });
     }
 
     const updated = await prisma.article.update({
       where: { id: parseInt(id) },
-      data: { status: 'PUBLISHED' },
+      data: { status: ARTICLE_STATUS.PUBLISHED },
       include: {
         author: { select: { id: true, name: true, email: true, role: true } },
       },
@@ -304,14 +322,10 @@ const deleteArticle = async (req, res) => {
 };
 
 // GET /api/articles/categories
+// Returns the static list of valid Category enum values
 const getCategories = async (req, res) => {
   try {
-    const categories = await prisma.article.findMany({
-      distinct: ['category'],
-      select: { category: true },
-      orderBy: { category: 'asc' },
-    });
-    res.json(categories.map((c) => c.category));
+    res.json(VALID_CATEGORIES);
   } catch (err) {
     res.status(500).json({ message: 'Internal server error.' });
   }

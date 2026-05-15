@@ -3,6 +3,7 @@ import api from '../api/axios';
 import ArticleCard from '../components/ArticleCard';
 import Pagination from '../components/Pagination';
 import { useAuth } from '../context/AuthContext';
+import { CATEGORY_OPTIONS, CATEGORY_LABELS, STATUS_LABELS } from '../constants/articleConstants';
 
 const SORT_OPTIONS = [
   { value: 'newest', label: 'Newest First' },
@@ -14,16 +15,15 @@ const SORT_OPTIONS = [
 
 const STATUS_OPTIONS = [
   { value: '', label: 'All Status' },
-  { value: 'PUBLISHED', label: 'Published' },
-  { value: 'DRAFT', label: 'Draft' },
-  { value: 'ARCHIVED', label: 'Archived' },
+  { value: 'PUBLISHED', label: STATUS_LABELS.PUBLISHED },
+  { value: 'DRAFT', label: STATUS_LABELS.DRAFT },
+  { value: 'ARCHIVED', label: STATUS_LABELS.ARCHIVED },
 ];
 
 const DashboardPage = () => {
   const { user, isEditor } = useAuth();
   const [articles, setArticles] = useState([]);
   const [meta, setMeta] = useState({ total: 0, page: 1, totalPages: 1 });
-  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const [filters, setFilters] = useState({
@@ -34,13 +34,6 @@ const DashboardPage = () => {
     page: 1,
   });
   const [searchInput, setSearchInput] = useState('');
-
-  const fetchCategories = async () => {
-    try {
-      const res = await api.get('/articles/categories');
-      setCategories(res.data);
-    } catch {}
-  };
 
   const fetchArticles = useCallback(async () => {
     setLoading(true);
@@ -58,10 +51,6 @@ const DashboardPage = () => {
       setLoading(false);
     }
   }, [filters]);
-
-  useEffect(() => {
-    fetchCategories();
-  }, []);
 
   useEffect(() => {
     fetchArticles();
@@ -150,8 +139,8 @@ const DashboardPage = () => {
             onChange={(e) => setFilter('category', e.target.value)}
           >
             <option value="">All Categories</option>
-            {categories.map((c) => (
-              <option key={c} value={c}>{c}</option>
+            {CATEGORY_OPTIONS.map((c) => (
+              <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>
             ))}
           </select>
 

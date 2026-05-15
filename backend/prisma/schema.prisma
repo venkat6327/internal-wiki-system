@@ -4,7 +4,6 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -19,17 +18,31 @@ model User {
   articleVersions ArticleVersion[]
 }
 
+enum Status {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
 
+enum Category {
+  ENGINEERING
+  PRODUCT
+  HR
+  OPERATIONS
+  ONBOARDING
+  GENERAL
+}
 
 model Article {
-  id        Int      @id @default(autoincrement())
-  title     String
-  body      String
-  category  String   @default("General")
-  status    String   @default("DRAFT")
-  authorId  Int
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          Int       @id @default(autoincrement())
+  title       String
+  body        String
+  category    Category  @default(GENERAL)
+  status      Status    @default(DRAFT)
+  authorId    Int
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   author   User             @relation(fields: [authorId], references: [id])
   versions ArticleVersion[]
@@ -40,7 +53,7 @@ model ArticleVersion {
   articleId  Int
   title      String
   body       String
-  category   String
+  category   Category
   version    Int
   editedById Int
   createdAt  DateTime @default(now())
@@ -48,4 +61,3 @@ model ArticleVersion {
   article  Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
   editedBy User    @relation(fields: [editedById], references: [id])
 }
-

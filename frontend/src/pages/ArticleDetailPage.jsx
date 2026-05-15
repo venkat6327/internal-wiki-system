@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import StatusBadge from '../components/StatusBadge';
+import { CATEGORY_LABELS } from '../constants/articleConstants';
 
 const ArticleDetailPage = () => {
   const { id } = useParams();
@@ -153,7 +154,7 @@ const ArticleDetailPage = () => {
               fontSize: '0.75rem',
               fontWeight: 600,
             }}>
-              {article.category}
+              {CATEGORY_LABELS[article.category] || article.category}
             </span>
           </div>
 
