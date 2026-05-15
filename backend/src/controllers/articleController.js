@@ -57,7 +57,7 @@ const listArticles = async (req, res) => {
       // If not searching, use strict status filters
       if (status === ARTICLE_STATUS.DRAFT) {
         where.status = ARTICLE_STATUS.DRAFT;
-        where.authorId = req.user.id; // creatorId mapping
+        where.authorId = Number(req.user.id); // creatorId mapping
       } else if (status === ARTICLE_STATUS.ARCHIVED) {
         where.status = ARTICLE_STATUS.ARCHIVED;
       } else {
@@ -155,7 +155,7 @@ const getArticle = async (req, res) => {
     if (!article) return res.status(404).json({ message: 'Article not found.' });
 
     // Drafts are only accessible to their creator
-    if (article.status === ARTICLE_STATUS.DRAFT && article.authorId !== req.user.id) {
+    if (article.status === ARTICLE_STATUS.DRAFT && article.authorId !== Number(req.user.id)) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -175,14 +175,13 @@ const updateArticle = async (req, res) => {
     const article = await prisma.article.findUnique({ where: { id: parseInt(id) } });
     if (!article) return res.status(404).json({ message: 'Article not found.' });
 
-    // Drafts are only accessible to their creator
-    if (article.status === ARTICLE_STATUS.DRAFT && article.authorId !== req.user.id) {
-      return res.status(403).json({ message: 'Access denied' });
+    if (article.status === ARTICLE_STATUS.ARCHIVED) {
+      return res.status(403).json({ message: 'Archived articles cannot be edited.' });
     }
 
-    // Only author or EDITOR can update
-    if (article.authorId !== req.user.id && req.user.role !== 'EDITOR') {
-      return res.status(403).json({ message: 'Not authorized to update this article.' });
+    // Drafts are only accessible to their creator
+    if (article.status === ARTICLE_STATUS.DRAFT && article.authorId !== Number(req.user.id)) {
+      return res.status(403).json({ message: 'Access denied' });
     }
 
     // Validate category enum if provided
@@ -223,7 +222,7 @@ const publishArticle = async (req, res) => {
     if (!article) return res.status(404).json({ message: 'Article not found.' });
 
     // Drafts are only accessible to their creator
-    if (article.status === ARTICLE_STATUS.DRAFT && article.authorId !== req.user.id) {
+    if (article.status === ARTICLE_STATUS.DRAFT && article.authorId !== Number(req.user.id)) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -265,7 +264,7 @@ const archiveArticle = async (req, res) => {
     if (!article) return res.status(404).json({ message: 'Article not found.' });
 
     // Drafts are only accessible to their creator
-    if (article.status === ARTICLE_STATUS.DRAFT && article.authorId !== req.user.id) {
+    if (article.status === ARTICLE_STATUS.DRAFT && article.authorId !== Number(req.user.id)) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -297,7 +296,7 @@ const restoreArticle = async (req, res) => {
     if (!article) return res.status(404).json({ message: 'Article not found.' });
 
     // Drafts are only accessible to their creator
-    if (article.status === ARTICLE_STATUS.DRAFT && article.authorId !== req.user.id) {
+    if (article.status === ARTICLE_STATUS.DRAFT && article.authorId !== Number(req.user.id)) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -329,7 +328,7 @@ const getVersions = async (req, res) => {
     if (!article) return res.status(404).json({ message: 'Article not found.' });
 
     // Drafts are only accessible to their creator
-    if (article.status === ARTICLE_STATUS.DRAFT && article.authorId !== req.user.id) {
+    if (article.status === ARTICLE_STATUS.DRAFT && article.authorId !== Number(req.user.id)) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -357,7 +356,7 @@ const deleteArticle = async (req, res) => {
     if (!article) return res.status(404).json({ message: 'Article not found.' });
 
     // Drafts are only accessible to their creator
-    if (article.status === ARTICLE_STATUS.DRAFT && article.authorId !== req.user.id) {
+    if (article.status === ARTICLE_STATUS.DRAFT && article.authorId !== Number(req.user.id)) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
