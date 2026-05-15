@@ -41,20 +41,41 @@ const listArticles = async (req, res) => {
     const limitNum = Math.min(50, Math.max(1, parseInt(limit, 10)));
     const skip = (pageNum - 1) * limitNum;
 
-    const where = {
-      AND: [
-        search
-          ? {
-              OR: [
-                { title: { contains: search } },
-                { body: { contains: search } },
-              ],
-            }
-          : {},
-        category ? { category: { equals: category } } : {},
-        status ? { status: { equals: status } } : {},
-      ],
-    };
+    let finalStatus = status;
+    // Default listing should only show PUBLISHED
+    if (!finalStatus) {
+      finalStatus = ARTICLE_STATUS.PUBLISHED;
+    }
+
+    // Search should only return PUBLISHED articles, unless explicitly filtering for ARCHIVED
+    if (search && finalStatus !== ARTICLE_STATUS.ARCHIVED) {
+      finalStatus = ARTICLE_STATUS.PUBLISHED;
+    }
+
+    const whereConditions = [];
+
+    if (search) {
+      whereConditions.push({
+        OR: [
+          { title: { contains: search } },
+          { body: { contains: search } },
+        ],
+      });
+    }
+
+    if (category) {
+      whereConditions.push({ category: { equals: category } });
+    }
+
+    if (finalStatus === ARTICLE_STATUS.DRAFT) {
+      // If current user requests DRAFT status: only return drafts where creatorId === current user id
+      whereConditions.push({ status: { equals: ARTICLE_STATUS.DRAFT } });
+      whereConditions.push({ authorId: req.user.id });
+    } else {
+      whereConditions.push({ status: { equals: finalStatus } });
+    }
+
+    const where = { AND: whereConditions };
 
     let orderBy = { createdAt: 'desc' };
     if (sort === 'oldest') orderBy = { createdAt: 'asc' };
@@ -140,6 +161,11 @@ const getArticle = async (req, res) => {
 
     if (!article) return res.status(404).json({ message: 'Article not found.' });
 
+    // Drafts are only visible to their creator
+    if (article.status === ARTICLE_STATUS.DRAFT && article.authorId !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized to access this draft.' });
+    }
+
     res.json(article);
   } catch (err) {
     console.error('Get article error:', err);
@@ -155,6 +181,11 @@ const updateArticle = async (req, res) => {
 
     const article = await prisma.article.findUnique({ where: { id: parseInt(id) } });
     if (!article) return res.status(404).json({ message: 'Article not found.' });
+
+    // Drafts are only accessible to their creator
+    if (article.status === ARTICLE_STATUS.DRAFT && article.authorId !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized to access this draft.' });
+    }
 
     // Only author or EDITOR can update
     if (article.authorId !== req.user.id && req.user.role !== 'EDITOR') {
@@ -198,6 +229,11 @@ const publishArticle = async (req, res) => {
     const article = await prisma.article.findUnique({ where: { id: parseInt(id) } });
     if (!article) return res.status(404).json({ message: 'Article not found.' });
 
+    // Drafts are only accessible to their creator
+    if (article.status === ARTICLE_STATUS.DRAFT && article.authorId !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized to access this draft.' });
+    }
+
     if (article.authorId !== req.user.id && req.user.role !== 'EDITOR') {
       return res.status(403).json({ message: 'Not authorized to publish this article.' });
     }
@@ -235,6 +271,11 @@ const archiveArticle = async (req, res) => {
     const article = await prisma.article.findUnique({ where: { id: parseInt(id) } });
     if (!article) return res.status(404).json({ message: 'Article not found.' });
 
+    // Drafts are only accessible to their creator
+    if (article.status === ARTICLE_STATUS.DRAFT && article.authorId !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized to access this draft.' });
+    }
+
     if (article.status === ARTICLE_STATUS.ARCHIVED) {
       return res.status(400).json({ message: 'Article is already archived.' });
     }
@@ -261,6 +302,11 @@ const restoreArticle = async (req, res) => {
 
     const article = await prisma.article.findUnique({ where: { id: parseInt(id) } });
     if (!article) return res.status(404).json({ message: 'Article not found.' });
+
+    // Drafts are only accessible to their creator
+    if (article.status === ARTICLE_STATUS.DRAFT && article.authorId !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized to access this draft.' });
+    }
 
     if (article.status !== ARTICLE_STATUS.ARCHIVED) {
       return res.status(400).json({ message: 'Article is not archived.' });
@@ -289,6 +335,11 @@ const getVersions = async (req, res) => {
     const article = await prisma.article.findUnique({ where: { id: parseInt(id) } });
     if (!article) return res.status(404).json({ message: 'Article not found.' });
 
+    // Drafts are only accessible to their creator
+    if (article.status === ARTICLE_STATUS.DRAFT && article.authorId !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized to access this draft.' });
+    }
+
     const versions = await prisma.articleVersion.findMany({
       where: { articleId: parseInt(id) },
       orderBy: { version: 'desc' },
@@ -311,6 +362,11 @@ const deleteArticle = async (req, res) => {
 
     const article = await prisma.article.findUnique({ where: { id: parseInt(id) } });
     if (!article) return res.status(404).json({ message: 'Article not found.' });
+
+    // Drafts are only accessible to their creator
+    if (article.status === ARTICLE_STATUS.DRAFT && article.authorId !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized to access this draft.' });
+    }
 
     await prisma.article.delete({ where: { id: parseInt(id) } });
 

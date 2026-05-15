@@ -38,7 +38,7 @@ const ArticleDetailPage = () => {
     try {
       const res = await api.get(`/articles/${id}/versions`);
       setVersions(res.data);
-    } catch {}
+    } catch { }
   };
 
   useEffect(() => {

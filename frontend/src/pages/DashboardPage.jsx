@@ -14,7 +14,6 @@ const SORT_OPTIONS = [
 ];
 
 const STATUS_OPTIONS = [
-  { value: '', label: 'All Status' },
   { value: 'PUBLISHED', label: STATUS_LABELS.PUBLISHED },
   { value: 'DRAFT', label: STATUS_LABELS.DRAFT },
   { value: 'ARCHIVED', label: STATUS_LABELS.ARCHIVED },
@@ -29,7 +28,7 @@ const DashboardPage = () => {
   const [filters, setFilters] = useState({
     search: '',
     category: '',
-    status: '',
+    status: 'PUBLISHED',
     sort: 'newest',
     page: 1,
   });
