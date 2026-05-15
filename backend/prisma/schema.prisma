@@ -1,0 +1,51 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int       @id @default(autoincrement())
+  email     String    @unique
+  password  String
+  name      String
+  role      String    @default("CONTRIBUTOR")
+  createdAt DateTime  @default(now())
+
+  articles        Article[]
+  articleVersions ArticleVersion[]
+}
+
+
+
+model Article {
+  id        Int      @id @default(autoincrement())
+  title     String
+  body      String
+  category  String   @default("General")
+  status    String   @default("DRAFT")
+  authorId  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  author   User             @relation(fields: [authorId], references: [id])
+  versions ArticleVersion[]
+}
+
+model ArticleVersion {
+  id         Int      @id @default(autoincrement())
+  articleId  Int
+  title      String
+  body       String
+  category   String
+  version    Int
+  editedById Int
+  createdAt  DateTime @default(now())
+
+  article  Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  editedBy User    @relation(fields: [editedById], references: [id])
+}
+
