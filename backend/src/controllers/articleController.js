@@ -41,41 +41,34 @@ const listArticles = async (req, res) => {
     const limitNum = Math.min(50, Math.max(1, parseInt(limit, 10)));
     const skip = (pageNum - 1) * limitNum;
 
-    let finalStatus = status;
-    // Default listing should only show PUBLISHED
-    if (!finalStatus) {
-      finalStatus = ARTICLE_STATUS.PUBLISHED;
-    }
-
-    // Search should only return PUBLISHED articles, unless explicitly filtering for ARCHIVED
-    if (search && finalStatus !== ARTICLE_STATUS.ARCHIVED) {
-      finalStatus = ARTICLE_STATUS.PUBLISHED;
-    }
-
-    const whereConditions = [];
+    let where = {};
 
     if (search) {
-      whereConditions.push({
-        OR: [
-          { title: { contains: search } },
-          { body: { contains: search } },
-        ],
-      });
-    }
-
-    if (category) {
-      whereConditions.push({ category: { equals: category } });
-    }
-
-    if (finalStatus === ARTICLE_STATUS.DRAFT) {
-      // If current user requests DRAFT status: only return drafts where creatorId === current user id
-      whereConditions.push({ status: { equals: ARTICLE_STATUS.DRAFT } });
-      whereConditions.push({ authorId: req.user.id });
+      // Search ALWAYS enforces status = "PUBLISHED"
+      where.status = ARTICLE_STATUS.PUBLISHED;
+      where.OR = [
+        { title: { contains: search } },
+        { body: { contains: search } },
+      ];
+      if (category) {
+        where.category = category;
+      }
     } else {
-      whereConditions.push({ status: { equals: finalStatus } });
-    }
+      // If not searching, use strict status filters
+      if (status === ARTICLE_STATUS.DRAFT) {
+        where.status = ARTICLE_STATUS.DRAFT;
+        where.authorId = req.user.id; // creatorId mapping
+      } else if (status === ARTICLE_STATUS.ARCHIVED) {
+        where.status = ARTICLE_STATUS.ARCHIVED;
+      } else {
+        // DEFAULT
+        where.status = ARTICLE_STATUS.PUBLISHED;
+      }
 
-    const where = { AND: whereConditions };
+      if (category) {
+        where.category = category;
+      }
+    }
 
     let orderBy = { createdAt: 'desc' };
     if (sort === 'oldest') orderBy = { createdAt: 'asc' };
@@ -161,9 +154,9 @@ const getArticle = async (req, res) => {
 
     if (!article) return res.status(404).json({ message: 'Article not found.' });
 
-    // Drafts are only visible to their creator
+    // Drafts are only accessible to their creator
     if (article.status === ARTICLE_STATUS.DRAFT && article.authorId !== req.user.id) {
-      return res.status(403).json({ message: 'Not authorized to access this draft.' });
+      return res.status(403).json({ message: 'Access denied' });
     }
 
     res.json(article);
@@ -184,7 +177,7 @@ const updateArticle = async (req, res) => {
 
     // Drafts are only accessible to their creator
     if (article.status === ARTICLE_STATUS.DRAFT && article.authorId !== req.user.id) {
-      return res.status(403).json({ message: 'Not authorized to access this draft.' });
+      return res.status(403).json({ message: 'Access denied' });
     }
 
     // Only author or EDITOR can update
@@ -231,7 +224,7 @@ const publishArticle = async (req, res) => {
 
     // Drafts are only accessible to their creator
     if (article.status === ARTICLE_STATUS.DRAFT && article.authorId !== req.user.id) {
-      return res.status(403).json({ message: 'Not authorized to access this draft.' });
+      return res.status(403).json({ message: 'Access denied' });
     }
 
     if (article.authorId !== req.user.id && req.user.role !== 'EDITOR') {
@@ -273,7 +266,7 @@ const archiveArticle = async (req, res) => {
 
     // Drafts are only accessible to their creator
     if (article.status === ARTICLE_STATUS.DRAFT && article.authorId !== req.user.id) {
-      return res.status(403).json({ message: 'Not authorized to access this draft.' });
+      return res.status(403).json({ message: 'Access denied' });
     }
 
     if (article.status === ARTICLE_STATUS.ARCHIVED) {
@@ -305,7 +298,7 @@ const restoreArticle = async (req, res) => {
 
     // Drafts are only accessible to their creator
     if (article.status === ARTICLE_STATUS.DRAFT && article.authorId !== req.user.id) {
-      return res.status(403).json({ message: 'Not authorized to access this draft.' });
+      return res.status(403).json({ message: 'Access denied' });
     }
 
     if (article.status !== ARTICLE_STATUS.ARCHIVED) {
@@ -337,7 +330,7 @@ const getVersions = async (req, res) => {
 
     // Drafts are only accessible to their creator
     if (article.status === ARTICLE_STATUS.DRAFT && article.authorId !== req.user.id) {
-      return res.status(403).json({ message: 'Not authorized to access this draft.' });
+      return res.status(403).json({ message: 'Access denied' });
     }
 
     const versions = await prisma.articleVersion.findMany({
@@ -365,7 +358,7 @@ const deleteArticle = async (req, res) => {
 
     // Drafts are only accessible to their creator
     if (article.status === ARTICLE_STATUS.DRAFT && article.authorId !== req.user.id) {
-      return res.status(403).json({ message: 'Not authorized to access this draft.' });
+      return res.status(403).json({ message: 'Access denied' });
     }
 
     await prisma.article.delete({ where: { id: parseInt(id) } });
